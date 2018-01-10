@@ -1,0 +1,19 @@
+{
+  "name": "mac-dict-scraper",
+  "version": "1.0.0",
+  "description": "",
+  "main": "scraper.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "abdulahhamzic@gmail.com",
+  "license": "ISC",
+  "dependencies": {
+    "jsonfile": "^4.0.0",
+    "nightmare": "^2.10.0"
+  },
+  "devDependencies": {
+    "@types/nightmare": "^2.10.1",
+    "typescript": "^2.6.2"
+  }
+}
