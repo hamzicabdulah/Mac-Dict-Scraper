@@ -1,13 +1,12 @@
 import * as jsonfile from 'jsonfile';
 import * as Nightmare from 'nightmare';
-import * as xray from 'x-ray';
-const x = xray();
 const nightmare = new Nightmare({ show: false });
 
 interface IWordDefinition {
     meaning: string;
     english?: string;
     example?: string;
+    synonyms?: string[];
 }
 
 interface IWordData {
@@ -35,21 +34,34 @@ class DictScraper {
     }
 
     public async scrape(): Promise<any> {
-        for (let i = 0; i < this.macedonianLetters.length; i++) {
-            const letter = this.macedonianLetters[i];
-            await this.getWordRangeURIsByLetter(letter);
-        }
-        for (let i = 0; i < this.allWordRangeURIs.length; i++) {
-            const rangeURI = this.allWordRangeURIs[i];
-            await this.getWordURIsByRange(rangeURI);
-        }
-        //this.allWordURIs = ['а/сврз', 'а/чест'];
+        const wordRangeURIsFilePath = './wordRangeURIs.json';
+        await this.readJSONFile(wordRangeURIsFilePath)
+            .then(async (wordRangeURIs) => {
+                if (wordRangeURIs.length)
+                    return this.allWordRangeURIs = wordRangeURIs;
+                for (let i = 0; i < this.macedonianLetters.length; i++) {
+                    const letter = this.macedonianLetters[i];
+                    await this.getWordRangeURIsByLetter(letter);
+                }
+                this.createJSONFile(this.allWordRangeURIs, wordRangeURIsFilePath);
+            });
+        const allWordURIsFilePath = './wordURIs.json';
+        await this.readJSONFile(allWordURIsFilePath)
+            .then(async (wordURIs) => {
+                if (wordURIs.length)
+                    return this.allWordURIs = wordURIs;
+                for (let i = 0; i < this.allWordRangeURIs.length; i++) {
+                    const rangeURI = this.allWordRangeURIs[i];
+                    await this.getWordURIsByRange(rangeURI);
+                }
+                this.createJSONFile(this.allWordURIs, allWordURIsFilePath);
+            });
         for (let i = 0; i < this.allWordURIs.length; i++) {
             const wordURI = encodeURI(this.allWordURIs[i]);
             await this.getWordData(wordURI);
         }
-        const wordsFilePath = './words.json';
-        return this.createJSONFile(this.allWords, wordsFilePath);
+        const allWordsDataFilePath = './allWordsData.json';
+        return this.createJSONFile(this.allWords, allWordsDataFilePath);
     }
 
     private getWordRangeURIsByLetter(letter: string): Promise<any> {
@@ -107,21 +119,24 @@ class DictScraper {
                         word: document.querySelector(wordSelector).innerHTML,
                         grammar: document.querySelector(grammarSelector).innerHTML,
                         definitions: []
-                    }
+                    };
                     const flexionDiv = document.querySelector('.flexion i');
                     if (flexionDiv) wordData.flexion = flexionDiv.innerHTML;
-                    const meaningsSelector = '.meaning';
-                    const meaningDivs = document.querySelectorAll(meaningsSelector);
-                    const engTranslationsSelector = '.translation.eng a';
-                    const engTranslationDivs: any = document.querySelectorAll(engTranslationsSelector);
-                    const examplesSelector = '.example';
-                    const exampleDivs: any = document.querySelectorAll(examplesSelector);
-                    meaningDivs.forEach((meaningDiv: HTMLDivElement, index: number) => {
+                    const definitionDivs = document.querySelectorAll('.definition');
+                    definitionDivs.forEach((definitionDiv: HTMLDivElement) => {
+                        const meaningDiv: any = definitionDiv.querySelector('.meaning');
                         const definition: IWordDefinition = {
-                            meaning: meaningDiv.innerText,
-                            english: engTranslationDivs[index].innerText,
-                            example: exampleDivs[index].innerText
+                            meaning: meaningDiv.innerText
                         };
+                        const engTranslationDiv: any = definitionDiv.querySelector('.translation.eng a');
+                        if (engTranslationDiv) definition.english = engTranslationDiv.innerText;
+                        const exampleDiv: any = definitionDiv.querySelector('.example');
+                        if (exampleDiv) definition.example = exampleDiv.innerText;
+                        const synonymDivs: any = definitionDiv.querySelectorAll('.semem-links a');
+                        if (synonymDivs.length) {
+                            definition.synonyms = [];
+                            synonymDivs.forEach((synonymDiv: HTMLDivElement) => definition.synonyms.push(synonymDiv.innerText));
+                        }
                         wordData.definitions.push(definition);
                     });
                     return wordData;
@@ -135,6 +150,19 @@ class DictScraper {
         });
     }
 
+    public readJSONFile(filePath: string): Promise<any> {
+        return new Promise((resolve, reject) => {
+            jsonfile.readFile(filePath, (err: Error, data: any) => {
+                if (err) {
+                    console.log(`Error: ${err}`);
+                    return reject(err);
+                }
+                console.log(`Parsed data from JSON file: ${filePath}`);
+                resolve(data);
+            })
+        });
+    }
+
     private createJSONFile(data, filePath: string): Promise<any> {
         return new Promise((resolve, reject) => {
             jsonfile.writeFile(filePath, data, (err: Error) => {
@@ -142,7 +170,7 @@ class DictScraper {
                     console.log(`Error: ${err}`);
                     return reject(err);
                 }
-                console.log('Added data to JSON file');
+                console.log(`Added data to JSON file: ${filePath}`);
                 resolve(data);
             })
         });

@@ -1,3 +1,5 @@
 node_modules
 scraper.js
-words.json
+allWordsData.json
+wordRangeURIs.json
+wordURIs.json
