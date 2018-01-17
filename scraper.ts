@@ -125,8 +125,9 @@ class DictScraper {
                     const definitionDivs = document.querySelectorAll('.definition');
                     definitionDivs.forEach((definitionDiv: HTMLDivElement) => {
                         const meaningDiv: any = definitionDiv.querySelector('.meaning');
-                        const definition: IWordDefinition = {
-                            meaning: meaningDiv.innerText
+                        const meaning = meaningDiv.innerText;
+                        const definition: IWordDefinition = { 
+                            meaning: isNaN(meaning[0]) ? meaning : meaning.slice(3) 
                         };
                         const engTranslationDiv: any = definitionDiv.querySelector('.translation.eng a');
                         if (engTranslationDiv) definition.english = engTranslationDiv.innerText;
